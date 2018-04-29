@@ -1,3 +1,4 @@
+// NOTE: If you change the pin assignments, you'll also have to change the assembler code below
 static const int PIN_STEP = 5;
 static const int PIN_DIR = 4;
 static const int PIN_INDEX = 3;
