@@ -91,6 +91,7 @@ void setup() {
     }
   }
   asm volatile ("nop\n\t"
+    "cli\n\t" // Disable interrupts because this loop is quite timing critical...
     // Wait for one loop to finish
     "read_loop0:\n\t"
     "sbic %[_PINE], 5\n\t"
@@ -188,6 +189,7 @@ void setup() {
     "write_jumpout:\n\t"
     "sbis %[_PINE], 5\n\t"
     "rjmp write_jumpout\n\t"
+    "sei\n\t" // Reenable interrupts
     :
     : [_PINE]    "I"  (_SFR_IO_ADDR(PINE)),
       [_PORTH]    "i"  (_SFR_MEM_ADDR(PORTH)),
@@ -203,6 +205,7 @@ void setup() {
     uint8_t aa = 0;
     uint8_t bb = 30;
     asm volatile ("nop\n\t"
+      "cli\n\t" // Disable interrupts because this loop is quite timing critical...
       // Wait for one loop to finish
       "read_loop1:\n\t"
       "sbic %[_PINE], 5\n\t"
@@ -241,6 +244,7 @@ void setup() {
       "finish_loop:\n\t"
       "sbis %[_PINE], 5\n\t"
       "rjmp finish_loop\n\t"
+      "sei\n\t" // Reenable interrupts
       : [aa] "+&e" (aa),
         [bb] "+&e" (bb)
       : [_PINE]    "I"  (_SFR_IO_ADDR(PINE)),
