@@ -35,6 +35,11 @@ uint8_t bits_to_byte(char** buf)
          (*((*buf)++) << 0);
 }
 
+uint8_t shift_the_bits(uint8_t thisByte, uint8_t nextByte, uint8_t off)
+{
+  return (thisByte << off) | (nextByte >> (8-off));
+}
+
 void resetHead()
 {
   Serial.print("Reset the head");
@@ -388,24 +393,25 @@ void setup() {
     // TODO: Do this somehow during loading?
     for(int i = 0; i < BUFSIZE; i++) {
       int off = -1;
-           if((buf[i]&0b11111111) == 0b10101001 && (buf[i+1]&0b00000000) == 0b00000000) off = 0;
-      else if((buf[i]&0b01111111) == 0b01010100 && (buf[i+1]&0b10000000) == 0b10000000) off = 1;
-      else if((buf[i]&0b00111111) == 0b00101010 && (buf[i+1]&0b11000000) == 0b01000000) off = 2;
-      else if((buf[i]&0b00011111) == 0b00010101 && (buf[i+1]&0b11100000) == 0b00100000) off = 3;
-      else if((buf[i]&0b00001111) == 0b00001010 && (buf[i+1]&0b11110000) == 0b10010000) off = 4;
-      else if((buf[i]&0b00000111) == 0b00000101 && (buf[i+1]&0b11111000) == 0b01001000) off = 5;
-      else if((buf[i]&0b00000011) == 0b00000010 && (buf[i+1]&0b11111100) == 0b10100100) off = 6;
-      else if((buf[i]&0b00000001) == 0b00000001 && (buf[i+1]&0b11111110) == 0b01010010) off = 7;
+      for(int j = 0; j < 8; j++) {
+        if (shift_the_bits(buf[i+0], buf[i+1], j) == 0b10101001 &&
+            shift_the_bits(buf[i+1], buf[i+2], j) == 0b10101001 &&
+            shift_the_bits(buf[i+2], buf[i+3], j) == 0b10101001 &&
+            shift_the_bits(buf[i+3], buf[i+4], j) == 0b10101001) {
+          off = j;
+          break;
+        }
+      }
       if (off == -1) continue;
       Serial.print("Offset is ");
       Serial.print(off);
       Serial.print(" starting at ");
       Serial.print(i);
-      while ((uint8_t)((buf[i] << off) | (buf[i+1] >> (8-off))) == 0b10101001) i++;
+      while (shift_the_bits(buf[i], buf[i+1], off) == 0b10101001) i++;
       Serial.print(", but really at ");
       Serial.println(i);
       for(int j = 0; j < BUFSIZE; j++) {
-        buf[j] = (buf[j+i] << off) | (buf[j+i+1] >> (8-off));
+        buf[j] = shift_the_bits(buf[i+j], buf[i+j+1], off);
       }
       break;
     }
