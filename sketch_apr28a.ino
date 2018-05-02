@@ -1,14 +1,29 @@
 // NOTE: If you change the pin assignments, you'll also have to change the assembler code below
-static const int PIN_STEP = 5;
+static const int PIN_INDEX = 28;
+//static const int PIN_MOTOR_ENABLE_A = 30;
+static const int PIN_DRIVE_SELECT = 32;
+//static const int PIN_DRIVE_SELECT_A = 34;
+static const int PIN_MOTOR_ENABLE = 36;
+static const int PIN_DIR = 38;
+static const int PIN_STEP = 40;
+static const int PIN_WRITE_DATA = 42;
+static const int PIN_WRITE_ENABLE = 44;
+static const int PIN_TRACK00 = 46;
+static const int PIN_WRITE_PROTECT = 48;
+static const int PIN_READ_DATA = 50;
+static const int PIN_HEAD_SELECT = 52;
+//static const int PIN_DISK_CHANGE_READY = 54;
+
+/*static const int PIN_STEP = 5;
 static const int PIN_DIR = 4;
 static const int PIN_INDEX = 3;
 static const int PIN_MOTOR_ENABLE = 2;
 static const int PIN_READ_DATA = 8;
 static const int PIN_TRACK00 = 9;
 static const int PIN_WRITE_DATA = 6;
-static const int PIN_WRITE_ENABLE = 7;
+static const int PIN_WRITE_ENABLE = 7;*/
 
-static const int BUFSIZE = 30*256;
+static const int BUFSIZE = 20*256;
 uint8_t buf[BUFSIZE];
 
 void byte_to_bits(char** buf, uint8_t b)
@@ -145,6 +160,21 @@ void setup() {
   pinMode(PIN_READ_DATA, INPUT_PULLUP);
   pinMode(PIN_WRITE_DATA, OUTPUT);
   pinMode(PIN_WRITE_ENABLE, OUTPUT);
+  pinMode(PIN_WRITE_PROTECT, INPUT_PULLUP);
+  pinMode(PIN_HEAD_SELECT, OUTPUT);
+  digitalWrite(PIN_HEAD_SELECT, HIGH);
+  //pinMode(PIN_DISK_CHANGE_READY, INPUT_PULLUP);
+  pinMode(PIN_DRIVE_SELECT, OUTPUT);
+  digitalWrite(PIN_DRIVE_SELECT, LOW);
+
+  /*for(int i = 22; i <= 52; i+=2) { pinMode(i, OUTPUT); digitalWrite(i, HIGH); }
+  for(int i = 22; i <= 52; i+=2) {
+    Serial.println(i);
+    digitalWrite(i, LOW);
+    delay(1000);
+    digitalWrite(i, HIGH);
+  }
+  while(true);*/
 
   digitalWrite(LED_BUILTIN, LOW);
   digitalWrite(PIN_MOTOR_ENABLE, HIGH);
@@ -205,14 +235,14 @@ void setup() {
     "cli\n\t" // Disable interrupts because this loop is quite timing critical...
     // Wait for one loop to finish
     "read_loop0:\n\t"
-    "sbic %[_PINE], 5\n\t"
+    "sbic %[_PINA], 6\n\t"
     "rjmp read_loop0\n\t"
     "finish_loop0:\n\t"
-    "sbis %[_PINE], 5\n\t"
+    "sbis %[_PINA], 6\n\t"
     "rjmp finish_loop0\n\t"
     ""
-    "lds r24, %[_PORTH]\n\t" // r24 = high
-    "ldi r25, (1<<3)\n\t" // r25 = low
+    "lds r24, %[_PORTL]\n\t" // r24 = high
+    "ldi r25, (1<<7)\n\t" // r25 = low
     "eor r25, r24\n\t"
     ""
     "clr r26\n\t" // r26 is the bit index
@@ -223,12 +253,12 @@ void setup() {
     "ld __tmp_reg__, %a[buf]+\n\t"
     "no_load_needed:\n\t"
     ""
-    "sts %[_PORTH], r25\n\t"
+    "sts %[_PORTL], r25\n\t"
     "nop; nop; nop; nop; nop; nop; nop; nop\n\t"
     "nop; nop; nop; nop; nop; nop; nop; nop\n\t"
     "nop; nop; nop; nop; nop; nop; nop; nop\n\t"
     "nop; nop; nop; nop; nop; nop; nop; nop\n\t"
-    "sts %[_PORTH], r24\n\t"
+    "sts %[_PORTL], r24\n\t"
     "nop; nop; nop; nop; nop; nop; nop; nop\n\t"
     "nop; nop; nop; nop; nop; nop; nop; nop\n\t"
     "nop; nop; nop; nop; nop; nop; nop; nop\n\t"
@@ -299,16 +329,16 @@ void setup() {
     // Shift the byte
     "lsl __tmp_reg__\n\t"
     
-    "sbic %[_PINE], 5\n\t"
+    "sbic %[_PINA], 6\n\t"
     "rjmp write_loop\n\t"
     
     "write_jumpout:\n\t"
-    "sbis %[_PINE], 5\n\t"
+    "sbis %[_PINA], 6\n\t"
     "rjmp write_jumpout\n\t"
     "sei\n\t" // Reenable interrupts
     :
-    : [_PINE]    "I"  (_SFR_IO_ADDR(PINE)),
-      [_PORTH]    "i"  (_SFR_MEM_ADDR(PORTH)),
+    : [_PINA]    "I"  (_SFR_IO_ADDR(PINA)),
+      [_PORTL]    "i"  (_SFR_MEM_ADDR(PORTL)),
       [buf] "e" (buf)
     : "r24", "r25", "r26"
   );
@@ -318,35 +348,34 @@ void setup() {
   delay(25);
 #endif
 
+  //while(true) digitalWrite(LED_BUILTIN, !digitalRead(PIN_READ_DATA));
   Serial.println("Reading 8 times:");
   for(int k = 0; k < 8; k++) {
     for(int i = 0; i < BUFSIZE; i++) buf[i] = 0;
     asm volatile ("nop\n\t"
       "cli\n\t" // Disable interrupts because this loop is quite timing critical...
       "ldi r25, 0\n\t"
-      "ldi r26, 30\n\t"
+      "ldi r26, 20\n\t"
       "clr r23\n\t" // bit counter
       "clr r27\n\t" // temp byte
       // Wait for one loop to finish
       "read_loop1:\n\t"
-      "sbic %[_PINE], 5\n\t"
+      "sbic %[_PINA], 6\n\t"
       "rjmp read_loop1\n\t"
       "finish_loop1:\n\t"
-      "sbis %[_PINE], 5\n\t"
+      "sbis %[_PINA], 6\n\t"
       "rjmp finish_loop1\n\t"
       "\n\t"
       ""
       "read_loop:\n\t"
       "clr r24\n\t"
       "wait_for_rising_edge:\n\t"
-      "lds __tmp_reg__, %[_PINH]\n\t"
-      "sbrs __tmp_reg__, 5\n\t"
+      "sbis %[_PINB], 3\n\t"
       "rjmp wait_for_rising_edge\n\t"
       
       "count_loop:\n\t"
       "inc r24\n\t"
-      "lds __tmp_reg__, %[_PINH]\n\t"
-      "sbrc __tmp_reg__, 5\n\t"
+      "sbic %[_PINB], 3\n\t"
       "rjmp count_loop\n\t"
 
       "lsr r24\n\t"
@@ -376,24 +405,24 @@ void setup() {
       "no_store_needed:\n\t"
 
       // Repeat if no index hole still
-      "sbic %[_PINE], 5\n\t"
+      "sbic %[_PINA], 6\n\t"
       "rjmp read_loop\n\t"
 
       // Wait for the index hole end
       "finish_loop:\n\t"
-      "sbis %[_PINE], 5\n\t"
+      "sbis %[_PINA], 6\n\t"
       "rjmp finish_loop\n\t"
       "sei\n\t" // Reenable interrupts
       :
-      : [_PINE]    "I"  (_SFR_IO_ADDR(PINE)),
-        [_PINH]    "i"  (_SFR_MEM_ADDR(PINH)),
+      : [_PINA]    "I"  (_SFR_IO_ADDR(PINA)),
+        [_PINB]    "I"  (_SFR_IO_ADDR(PINB)),
         [buf] "e" (buf)
       : "memory", "r24", "r25", "r26", "r27", "r23");
     // We now have to realign the bits in the buffer
     // TODO: Do this somehow during loading?
-    for(int i = 0; i < BUFSIZE; i++) {
-      int off = -1;
-      for(int j = 0; j < 8; j++) {
+    for(uint16_t i = 0; i < BUFSIZE; i++) {
+      int8_t off = -1;
+      for(uint8_t j = 0; j < 8; j++) {
         if (shift_the_bits(buf[i+0], buf[i+1], j) == 0b10101001 &&
             shift_the_bits(buf[i+1], buf[i+2], j) == 0b10101001 &&
             shift_the_bits(buf[i+2], buf[i+3], j) == 0b10101001 &&
@@ -410,7 +439,7 @@ void setup() {
       while (shift_the_bits(buf[i], buf[i+1], off) == 0b10101001) i++;
       Serial.print(", but really at ");
       Serial.println(i);
-      for(int j = 0; j < BUFSIZE; j++) {
+      for(uint16_t j = 0; j < BUFSIZE; j++) {
         buf[j] = shift_the_bits(buf[i+j], buf[i+j+1], off);
       }
       break;
